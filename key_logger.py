@@ -22,8 +22,8 @@ from pynput.keyboard import Key, Listener
 # ######### User Settings ##########
 # ######### #### ######## ##########
 
-SEND_LOGS_TO_SQLITE = True
-SEND_LOGS_TO_FILE = False
+SEND_LOGS_TO_SQLITE = False
+SEND_LOGS_TO_FILE = True
 
 LOG_FILE_NAME = 'key_log.txt'
 SQLITE_FILE_NAME = 'key_log.sqlite'
@@ -60,22 +60,32 @@ MODIFIER_KEYS = [
     Key.ctrl,
     Key.cmd,
     Key.shift,
+    Key.alt_r,
+    Key.alt_l,
+    Key.ctrl_r,
+    Key.ctrl_l,
+    Key.cmd_r,
+    Key.cmd_l,
+    Key.shift_r,
+    Key.shift_l
 ]
 
 IGNORED_KEYS = []
 
 REMAP = {
-    Key.alt_r: Key.alt,
-    Key.alt_l: Key.alt,
-    Key.ctrl_r: Key.ctrl,
-    Key.ctrl_l: Key.ctrl,
-    Key.cmd_r: Key.cmd,
-    Key.cmd_l: Key.cmd,
-    Key.shift_r: Key.shift,
-    Key.shift_l: Key.shift,
+    # Key.alt_r: Key.alt,
+    # Key.alt_l: Key.alt,
+    # Key.ctrl_r: Key.ctrl,
+    # Key.ctrl_l: Key.ctrl,
+    # Key.cmd_r: Key.cmd,
+    # Key.cmd_l: Key.cmd,
+    # Key.shift_r: Key.shift,
+    # Key.shift_l: Key.shift,
 }
 
 keys_currently_down = []
+
+previous_key = None
 
 # ######### ####### ######### ##########
 # ######### Logging Functions ##########
@@ -246,11 +256,11 @@ def log(key):
   conceptually, to miss the mark on logging combos).
   """
   modifiers_down = [k for k in keys_currently_down if k in MODIFIER_KEYS]
-  if modifiers_down == [Key.shift] and key_is_a_symbol(key):
+  if (modifiers_down == [Key.shift] or modifiers_down == [Key.shift_r]) and key_is_a_symbol(key):
     modifiers_down = []
   log_entry = ' + '.join(
       sorted([key_to_str(k) for k in modifiers_down])
-      + [key_to_str(key)]
+      + ([key_to_str(key)] if key not in MODIFIER_KEYS else [])
   )
   logging.info(f'key: {log_entry}')
 
@@ -321,9 +331,12 @@ def key_down(key):
   to help you figure out what your fingers are doing, not necessarily
   what is going on in the computer.
   """
+  global previous_key
+
   if key in keys_currently_down:
     return
 
+  previous_key = key
   keys_currently_down.append(key)
   logging.debug(
       f'key down : {key_to_str(key)} : '
@@ -378,6 +391,10 @@ def key_up(key):
   of a key-combo).
   """
   global keys_currently_down
+
+  # log tapped modifiers
+  if key in MODIFIER_KEYS and previous_key in MODIFIER_KEYS:
+    log(key)
 
   try:
     keys_currently_down.remove(key)
